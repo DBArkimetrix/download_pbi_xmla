@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "download_xmla"
+version = "0.1.0"
+description = "A package to fetch and save Power BI tables via XMLA endpoint"
+authors = ["Danny Bharat <dannybharat@arkimetrix.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.13"  # Updated Python version range
+polars = "^0.20.31"
+pyodbc = "^5.1.0"
+pandas = "^2.2.2"
+pythonnet = "^3.0.3"
+pyarrow = "^16.1.0"
+
+[tool.poetry.scripts]
+fetch_tables = "download_xmla.main:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
