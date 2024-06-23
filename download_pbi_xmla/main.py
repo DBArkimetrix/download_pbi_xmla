@@ -15,8 +15,14 @@ def fetch_and_save_table(table_name, conn_str, file_name):
         print(f"Failed to fetch or save table '{table_name}'.")
         print(str(e))
 
-# Main function
-def main():
+# Main function to be called from external script
+def fetch_tables(server, db_name, username, password, tables):
+    conn_str = set_conn_string(server, db_name, username, password)
+    for table in tables:
+        fetch_and_save_table(table, conn_str, f"{table}.parquet")
+
+# Optional: main function for command-line usage (if needed)
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fetch and save Power BI tables.')
     parser.add_argument('--server', required=True, help='Power BI server URL')
     parser.add_argument('--db_name', required=True, help='Database name')
@@ -25,9 +31,10 @@ def main():
     parser.add_argument('--tables', required=True, nargs='+', help='List of tables to download')
     args = parser.parse_args()
 
-    conn_str = set_conn_string(args.server, args.db_name, args.username, args.password)
-    for table in args.tables:
-        fetch_and_save_table(table, conn_str, f"{table}.parquet")
-
-if __name__ == '__main__':
-    main()
+    fetch_tables(
+        server=args.server,
+        db_name=args.db_name,
+        username=args.username,
+        password=args.password,
+        tables=args.tables
+    )
