@@ -169,7 +169,7 @@ def _parse_DAX_result(table: "DataTable") -> pd.DataFrame:
 
     # replace System.DBNull with None
     # df.replace({System.DBNull: np.NaN}) doesn't work for some reason
-    df = df.applymap(lambda x: np.NaN if isinstance(x, System.DBNull) else x)
+    df = df.applymap(lambda x: np.nan if isinstance(x, System.DBNull) else x)
 
     # convert datetimes
     dt_types = [c.ColumnName for c in cols if c.DataType.FullName == "System.DateTime"]
