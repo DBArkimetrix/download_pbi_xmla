@@ -11,9 +11,13 @@ This package requires Python version >=3.9,<3.13.
 ### Using Poetry
 
 To install the package using Poetry, run:
-
-```bash
 poetry add download_pbi_xmla
+
+### Using pip
+
+To install the package using pip, run:
+pip install download_pbi_xmla
+
 
 ## Usage
 After installing the package, you can use the fetch_tables command to download and save Power BI tables in Parquet format. 
