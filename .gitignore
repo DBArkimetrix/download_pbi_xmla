@@ -10,3 +10,7 @@ logs/
 
 # Ignore environment variable files
 .env
+
+# Ignore backups
+download_pbi_xmla/ssas_api_bkup.py
+

@@ -2,6 +2,10 @@
 
 This package allows you to fetch and save Power BI tables in Parquet format via the XMLA endpoint.
 
+## System Requirements
+
+This package requires a Windows environment with .NET assemblies, as it relies on `pythonnet` to interact with .NET libraries.
+
 ## Python Version Requirement
 
 This package requires Python version >=3.9,<3.13.
@@ -11,22 +15,25 @@ This package requires Python version >=3.9,<3.13.
 ### Using Poetry
 
 To install the package using Poetry, run:
+
 poetry add download_pbi_xmla
 
 ### Using pip
 
 To install the package using pip, run:
+
 pip install download_pbi_xmla
 
-
 ## Usage
-After installing the package, you can use the fetch_tables command to download and save Power BI tables in Parquet format. 
+After installing the package, you can use the fetch_tables command to download and save Power BI tables in Parquet format.
 Below are the details on how to use the command.
 
 ### Command Syntax
+
 fetch_tables --server SERVER_URL --db_name DATABASE_NAME --username USERNAME --password PASSWORD --tables Table1 Table2
 
 ### Parameters
+
 --server: The XMLA endpoint URL for your Power BI service.
 --db_name: The name of the database you want to connect to.
 --username: Your username for the Power BI service.
@@ -34,4 +41,8 @@ fetch_tables --server SERVER_URL --db_name DATABASE_NAME --username USERNAME --p
 --tables: The list of tables you want to fetch. You can specify multiple tables separated by spaces.
 
 ### Example Usage
+
 fetch_tables --server "powerbi://api.powerbi.com/v1.0/myorg/YourWorkspace" --db_name "YourDatabaseName" --username "YourUsername" --password "YourPassword" --tables "Table1" "Table2"
+
+
+

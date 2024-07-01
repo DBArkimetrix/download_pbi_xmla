@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "download_pbi_xmla"
-version = "0.2.5" # Update this version number for each new release
+version = "0.2.7" # Update this version number for each new release
 description = "A package to fetch and save Power BI tables via XMLA endpoint"
 authors = ["Danny Bharat <dannybharat@arkimetrix.com>"]
 readme = "README.md"
@@ -12,6 +12,7 @@ pyodbc = "^5.1.0"
 pandas = "^2.2.2"
 pythonnet = "^3.0.3"
 pyarrow = "^16.1.0"
+msal = "^1.29.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
