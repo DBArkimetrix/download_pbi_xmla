@@ -49,7 +49,16 @@ def get_access_token():
     else:
         raise ValueError("Failed to acquire token")
 
-# Main function
+# New function to fetch tables
+def fetch_tables(server, db_name, username, password, tables, path):
+    token = get_access_token()
+    conn_str = set_conn_string(server, db_name, username, password) + f";Token={token}"
+    
+    for table in tables:
+        file_path = os.path.join(path, f"{table}.parquet")
+        fetch_and_save_table(table, conn_str, file_path)
+
+# Main function for CLI usage
 def main():
     parser = argparse.ArgumentParser(description='Fetch and save Power BI tables.')
     parser.add_argument('--server', required=True, help='Power BI server URL')
@@ -61,14 +70,10 @@ def main():
     args = parser.parse_args()
 
     try:
-        token = get_access_token()
-        conn_str = set_conn_string(args.server, args.db_name, args.username, args.password) + f";Token={token}"
-        
-        for table in args.tables:
-            file_path = os.path.join(args.path, f"{table}.parquet")
-            fetch_and_save_table(table, conn_str, file_path)
+        fetch_tables(args.server, args.db_name, args.username, args.password, args.tables, args.path)
     except Exception as e:
         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
+
