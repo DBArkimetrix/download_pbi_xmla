@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Sep 20 16:59:43 2017
-
 @author: Yehoshua
+
+Modified on Mon Jun 20 2024
+@author Danny Bharat
 """
 
 import pandas as pd
 import numpy as np
-
+import platform
 from functools import wraps
 from pathlib import Path
 import logging
@@ -15,15 +17,19 @@ import warnings
 
 logger = logging.getLogger(__name__)
 
-try:
-    import clr  # name for pythonnet
-except ImportError:
-    msg = """
-    Could not import 'clr', install the 'pythonnet' library. 
-    For conda, `conda install -c pythonnet pythonnet`
-    """
-    raise ImportError(msg)
-
+# Platform check
+if platform.system() == "Windows":
+    try:
+        import clr  # name for pythonnet
+    except ImportError:
+        msg = """
+        Could not import 'clr', install the 'pythonnet' library. 
+        For conda, `conda install -c pythonnet pythonnet`
+        """
+        raise ImportError(msg)
+else:
+    clr = None
+    logger.warning("This package requires 'pythonnet' and .NET assemblies to work on Windows.")
 
 def _load_assemblies(amo_path=None, adomd_path=None):
     """
@@ -44,6 +50,9 @@ def _load_assemblies(amo_path=None, adomd_path=None):
         Example: C:/my/path/to/Microsoft.AnalysisServices.AdomdClient.dll
         If None, will use the default location on Windows.
     """
+    if clr is None:
+        raise EnvironmentError("This function can only be run on Windows with 'pythonnet' installed.")
+
     # Full path of .dll files
     root = Path(r"C:\Windows\Microsoft.NET\assembly\GAC_MSIL")
     # get latest version of libraries if multiple libraries are installed (max func)
@@ -96,6 +105,9 @@ def _assert_dotnet_loaded(func):
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
+        if platform.system() != "Windows":
+            raise EnvironmentError("This function can only be run on Windows with 'pythonnet' installed.")
+        
         amo_path = kwargs.pop("amo_path", None)
         adomd_path = kwargs.pop("adomd_path", None)
         try:
@@ -170,6 +182,9 @@ def _parse_DAX_result(table: "DataTable") -> pd.DataFrame:
     # replace System.DBNull with None
     # df.replace({System.DBNull: np.NaN}) doesn't work for some reason
     df = df.applymap(lambda x: np.nan if isinstance(x, System.DBNull) else x)
+    # replace System.DBNull with None
+    # df.replace({System.DBNull: np.NaN}) doesn't work for some reason
+    df = df.map(lambda x: np.nan if isinstance(x, System.DBNull) else x)
 
     # convert datetimes
     dt_types = [c.ColumnName for c in cols if c.DataType.FullName == "System.DateTime"]
@@ -184,12 +199,12 @@ def _parse_DAX_result(table: "DataTable") -> pd.DataFrame:
     # convert other types
     types_map = {"System.Int64": int, "System.Double": float, "System.String": str}
     col_types = {c.ColumnName: types_map.get(c.DataType.FullName, "object") for c in cols}
-    
+
     # handle NaNs (which are floats, as of pandas v.0.25.3) in int columns
-    col_types_ints = {k for k,v in col_types.items() if v == int}
+    col_types_ints = {k for k, v in col_types.items() if v == int}
     ser = df.isna().any(axis=0)
-    col_types.update({k:float for k in set(ser[ser].index).intersection(col_types_ints)})
-    
+    col_types.update({k: float for k in set(ser[ser].index).intersection(col_types_ints)})
+
     # convert
     df = df.astype(col_types)
 
