@@ -29,11 +29,13 @@ def get_access_token():
     accounts = app.get_accounts()
     
     if accounts:
+        # Attempt silent token acquisition first
         result = app.acquire_token_silent(SCOPES, account=accounts[0])
     else:
         result = None
 
     if not result:
+        # Fallback to device code flow if silent token acquisition fails
         flow = app.initiate_device_flow(scopes=SCOPES)
         if "user_code" not in flow:
             raise ValueError("Failed to create device flow")
@@ -58,12 +60,15 @@ def main():
     parser.add_argument('--path', required=True, help='Path where parquet files will be saved')
     args = parser.parse_args()
 
-    token = get_access_token()
-    conn_str = f"Provider=MSOLAP;Data Source={args.server};Initial Catalog={args.db_name};User ID={args.username};Password={args.password};Persist Security Info=True;Impersonation Level=Impersonate;Token={token}"
-    
-    for table in args.tables:
-        file_path = os.path.join(args.path, f"{table}.parquet")
-        fetch_and_save_table(table, conn_str, file_path)
+    try:
+        token = get_access_token()
+        conn_str = set_conn_string(args.server, args.db_name, args.username, args.password) + f";Token={token}"
+        
+        for table in args.tables:
+            file_path = os.path.join(args.path, f"{table}.parquet")
+            fetch_and_save_table(table, conn_str, file_path)
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()

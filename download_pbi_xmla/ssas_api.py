@@ -3,7 +3,7 @@
 Created on Wed Sep 20 16:59:43 2017
 @author: Yehoshua
 
-Modified on Mon Jun 20 2024
+Modified on Jul 01, 2024
 @author Danny Bharat
 """
 
@@ -124,7 +124,7 @@ def _assert_dotnet_loaded(func):
 def set_conn_string(server, db_name, username, password):
     """
     Sets connection string to SSAS database, 
-    in this case designed for Azure Analysis Services
+    designed in this case for Azure Analysis Services
     """
     if not db_name:
         raise ValueError("Database name (Initial Catalog) must be specified.")
@@ -180,11 +180,7 @@ def _parse_DAX_result(table: "DataTable") -> pd.DataFrame:
     df = pd.DataFrame.from_records(rows, columns=[c.ColumnName for c in cols])
 
     # replace System.DBNull with None
-    # df.replace({System.DBNull: np.NaN}) doesn't work for some reason
     df = df.applymap(lambda x: np.nan if isinstance(x, System.DBNull) else x)
-    # replace System.DBNull with None
-    # df.replace({System.DBNull: np.NaN}) doesn't work for some reason
-    df = df.map(lambda x: np.nan if isinstance(x, System.DBNull) else x)
 
     # convert datetimes
     dt_types = [c.ColumnName for c in cols if c.DataType.FullName == "System.DateTime"]
