@@ -5,8 +5,8 @@ import os
 from download_pbi_xmla.ssas_api import set_conn_string, get_DAX
 
 # Configuration for MSAL
-CLIENT_ID = "your_client_id"
-TENANT_ID = "your_tenant_id"
+CLIENT_ID = "your_client_id"  # Replace with your actual client ID
+TENANT_ID = "your_tenant_id"  # Replace with your actual tenant ID
 AUTHORITY_URL = f"https://login.microsoftonline.com/{TENANT_ID}"
 SCOPES = ["https://analysis.windows.net/powerbi/api/.default"]
 
@@ -50,9 +50,12 @@ def get_access_token():
         raise ValueError("Failed to acquire token")
 
 # New function to fetch tables
-def fetch_tables(server, db_name, username, password, tables, path):
-    token = get_access_token()
-    conn_str = set_conn_string(server, db_name, username, password) + f";Token={token}"
+def fetch_tables(server, db_name, username, password, tables, path, use_mfa=True):
+    if use_mfa:
+        token = get_access_token()
+        conn_str = set_conn_string(server, db_name, username, password) + f";Token={token}"
+    else:
+        conn_str = set_conn_string(server, db_name, username, password)
     
     for table in tables:
         file_path = os.path.join(path, f"{table}.parquet")
@@ -67,13 +70,13 @@ def main():
     parser.add_argument('--password', required=True, help='Password')
     parser.add_argument('--tables', required=True, nargs='+', help='List of tables to download')
     parser.add_argument('--path', required=True, help='Path where parquet files will be saved')
+    parser.add_argument('--use_mfa', action='store_true', help='Use MFA for authentication')
     args = parser.parse_args()
 
     try:
-        fetch_tables(args.server, args.db_name, args.username, args.password, args.tables, args.path)
+        fetch_tables(args.server, args.db_name, args.username, args.password, args.tables, args.path, args.use_mfa)
     except Exception as e:
         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
-
