@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "download_pbi_xmla"
-version = "0.2.7.9" # Update this version number for each new release
+version = "0.2.8.0" # Update this version number for each new release
 description = "A package to fetch and save Power BI tables via XMLA endpoint"
 authors = ["Danny Bharat <dannybharat@arkimetrix.com>"]
 readme = "README.md"
