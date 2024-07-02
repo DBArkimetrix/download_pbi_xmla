@@ -32,7 +32,7 @@ def get_access_token(client_id, client_secret, tenant_id):
 def fetch_tables(server, db_name, username, password, tables, path, client_id, client_secret, tenant_id, use_mfa=False):
     if use_mfa:
         token = get_access_token(client_id, client_secret, tenant_id)
-        conn_str = set_conn_string(server, db_name, username, password) + f";Token={token}"
+        conn_str = set_conn_string(server, db_name, username, password) + f";Bearer {token}"
     else:
         conn_str = set_conn_string(server, db_name, username, password)
     
