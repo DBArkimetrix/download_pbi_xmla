@@ -1,0 +1,4 @@
+include download_pbi_xmla/setup_files.py
+include download_pbi_xmla/run_download.py
+include download_pbi_xmla/.env_example
+include download_pbi_xmla/example_config.json
