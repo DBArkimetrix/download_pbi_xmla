@@ -14,3 +14,32 @@ logs/
 # Ignore backups
 download_pbi_xmla/ssas_api_bkup.py
 
+# Ignore Python bytecode files
+__pycache__/
+*.pyc
+
+# Ignore virtual environment directories
+venv/
+.env/
+.venv/
+
+# Ignore poetry lock file
+poetry.lock
+
+# Ignore specific files in any directory
+*.env
+config.json
+
+# Ignore logs
+logs/
+*.log
+
+# Ignore build artifacts
+build/
+dist/
+*.egg-info/
+
+# Do not ignore example files
+!.env_example
+!example_config.json
+

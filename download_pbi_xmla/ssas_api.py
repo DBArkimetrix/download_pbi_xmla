@@ -1,19 +1,12 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Sep 20 16:59:43 2017
-@author: Yehoshua
-
-Modified on Jul 01, 2024
-@author Danny Bharat
-"""
-
-import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import numpy as np
 import platform
 from functools import wraps
 from pathlib import Path
 import logging
 import warnings
+from datetime import datetime  # Ensure datetime is imported
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +25,10 @@ else:
     logger.warning("This package requires 'pythonnet' and .NET assemblies to work on Windows.")
 
 def _load_assemblies(amo_path=None, adomd_path=None):
-    """
-    Loads required assemblies, called after function definition.
-    Might need to install SSAS client libraries:
-    https://docs.microsoft.com/en-us/azure/analysis-services/analysis-services-data-providers
-
-    Parameters
-    ----------
-    amo_path : str, default None
-        The full path to the DLL file of the assembly for AMO. 
-        Should end with '**Microsoft.AnalysisServices.Tabular.dll**'
-        Example: C:/my/path/to/Microsoft.AnalysisServices.Tabular.dll
-        If None, will use the default location on Windows.
-    adomd_path : str, default None
-        The full path to the DLL file of the assembly for ADOMD. 
-        Should end with '**Microsoft.AnalysisServices.AdomdClient.dll**'
-        Example: C:/my/path/to/Microsoft.AnalysisServices.AdomdClient.dll
-        If None, will use the default location on Windows.
-    """
     if clr is None:
         raise EnvironmentError("This function can only be run on Windows with 'pythonnet' installed.")
 
-    # Full path of .dll files
     root = Path(r"C:\Windows\Microsoft.NET\assembly\GAC_MSIL")
-    # get latest version of libraries if multiple libraries are installed (max func)
     if amo_path is None:
         amo_path = str(
             max((root / "Microsoft.AnalysisServices.Tabular").iterdir())
@@ -67,14 +40,12 @@ def _load_assemblies(amo_path=None, adomd_path=None):
             / "Microsoft.AnalysisServices.AdomdClient.dll"
         )
 
-    # load .Net assemblies
     logger.info("Loading .Net assemblies...")
     clr.AddReference("System")
     clr.AddReference("System.Data")
     clr.AddReference(amo_path)
     clr.AddReference(adomd_path)
 
-    # Only after loaded .Net assemblies
     global System, DataTable, AMO, ADOMD
 
     import System
@@ -86,23 +57,7 @@ def _load_assemblies(amo_path=None, adomd_path=None):
     for a in clr.ListAssemblies(True):
         logger.info(a.split(",")[0])
 
-
 def _assert_dotnet_loaded(func):
-    """
-    Wrapper to make sure that required .NET assemblies have been loaded and imported.
-    Can pass the keyword arguments 'amo_path' and 'adomd_path' to any annotated function,
-    it will use them in the `_load_assemblies` function.
-
-    Example: 
-        .. code-block:: python
-        
-            import ssas_api
-            conn = ssas_api.set_conn_string(
-                's', 'd', 'u', 'p', 
-                amo_path='C:/path/number/one', 
-                adomd_path='C:/path/number/two'
-            )
-    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         if platform.system() != "Windows":
@@ -113,19 +68,13 @@ def _assert_dotnet_loaded(func):
         try:
             type(DataTable)
         except NameError:
-            # .NET assemblies not loaded/imported
             logger.warning(".Net assemblies not loaded and imported, doing so now...")
             _load_assemblies(amo_path=amo_path, adomd_path=adomd_path)
         return func(*args, **kwargs)
     return wrapper
 
-
 @_assert_dotnet_loaded
 def set_conn_string(server, db_name, username, password):
-    """
-    Sets connection string to SSAS database, 
-    designed in this case for Azure Analysis Services
-    """
     if not db_name:
         raise ValueError("Database name (Initial Catalog) must be specified.")
     
@@ -137,27 +86,11 @@ def set_conn_string(server, db_name, username, password):
     )
     return conn_string
 
-
 @_assert_dotnet_loaded
 def get_DAX(connection_string, dax_string):
-    """
-    Executes DAX query and returns the results as a pandas DataFrame
-    
-    Parameters
-    ---------------
-    connection_string : string
-        Valid SSAS connection string, use the set_conn_string() method to set
-    dax_string : string
-        Valid DAX query, beginning with EVALUATE or VAR or DEFINE
-
-    Returns
-    ----------------
-    pandas DataFrame with the results
-    """
     table = _get_DAX(connection_string, dax_string)
-    df = _parse_DAX_result(table)
-    return df
-
+    arrow_table = _parse_DAX_result(table)
+    return arrow_table
 
 def _get_DAX(connection_string, dax_string) -> "DataTable":
     dataadapter = ADOMD.AdomdDataAdapter(dax_string, connection_string)
@@ -167,45 +100,33 @@ def _get_DAX(connection_string, dax_string) -> "DataTable":
     logger.info("DAX query successfully retrieved")
     return table
 
-
-def _parse_DAX_result(table: "DataTable") -> pd.DataFrame:
+def _parse_DAX_result(table: "DataTable") -> pa.Table:
     cols = [c for c in table.Columns.List]
     rows = []
-    # much better performance to just access data by position instead of name
-    # and then add column names afterwards
     for r in range(table.Rows.Count):
         row = [table.Rows[r][c] for c in cols]
         rows.append(row)
 
-    df = pd.DataFrame.from_records(rows, columns=[c.ColumnName for c in cols])
+    arrays = []
+    for i, col in enumerate(cols):
+        column_name = col.ColumnName
+        data_type = col.DataType.FullName
+        data = [row[i] if not isinstance(row[i], System.DBNull) else None for row in rows]
 
-    # replace System.DBNull with None
-    df = df.applymap(lambda x: np.nan if isinstance(x, System.DBNull) else x)
+        if data_type == "System.DateTime":
+            data = [datetime.strptime(x.ToString('s'), "%Y-%m-%dT%H:%M:%S") if x is not None else None for x in data]
+            arrays.append(pa.array(data, type=pa.timestamp('s')))
+        elif data_type == "System.Int64":
+            arrays.append(pa.array(data, type=pa.int64()))
+        elif data_type == "System.Double":
+            arrays.append(pa.array(data, type=pa.float64()))
+        else:
+            arrays.append(pa.array(data, type=pa.string()))
 
-    # convert datetimes
-    dt_types = [c.ColumnName for c in cols if c.DataType.FullName == "System.DateTime"]
-    if dt_types:
-        for dtt in dt_types:
-            # if all nulls, then pd.to_datetime will fail
-            if not df.loc[:, dtt].isna().all():
-                # https://docs.microsoft.com/en-us/dotnet/standard/base-types/standard-date-and-time-format-strings#Sortable
-                ser = df.loc[:, dtt].map(lambda x: x.ToString('s'))
-                df.loc[:, dtt] = pd.to_datetime(ser)
+    schema = pa.schema([(col.ColumnName, arrays[i].type) for i, col in enumerate(cols)])
+    arrow_table = pa.Table.from_arrays(arrays, schema=schema)
 
-    # convert other types
-    types_map = {"System.Int64": int, "System.Double": float, "System.String": str}
-    col_types = {c.ColumnName: types_map.get(c.DataType.FullName, "object") for c in cols}
-
-    # handle NaNs (which are floats, as of pandas v.0.25.3) in int columns
-    col_types_ints = {k for k, v in col_types.items() if v == int}
-    ser = df.isna().any(axis=0)
-    col_types.update({k: float for k in set(ser[ser].index).intersection(col_types_ints)})
-
-    # convert
-    df = df.astype(col_types)
-
-    return df
-
+    return arrow_table
 
 @_assert_dotnet_loaded
 def process_database(connection_string, refresh_type, db_name):
@@ -215,7 +136,6 @@ def process_database(connection_string, refresh_type, db_name):
         refresh_type=refresh_type,
         db_name=db_name,
     )
-
 
 @_assert_dotnet_loaded
 def process_table(connection_string, table_name, refresh_type, db_name):
@@ -227,37 +147,18 @@ def process_table(connection_string, table_name, refresh_type, db_name):
         db_name=db_name,
     )
 
-
 @_assert_dotnet_loaded
 def process_model(connection_string, db_name, refresh_type="full", item_type="model", item=None):
-    """
-    Processes SSAS data model to get new data from underlying source.
-    
-    Parameters
-    -------------
-    connection_string : string
-        Valid SSAS connection string, use the set_conn_string() method to set
-    db_name : string
-        The data model on the SSAS server to process
-    refresh_type : string, default `full`
-        Type of refresh to process. Currently only supports `full`.
-    item_type : string, choice of {'model','table'}, default 'model'
-    item : string, optional.
-        Then name of the item. Only needed when item_type is 'table', to specify the table name
-    """
     assert item_type.lower() in ("table", "model"), f"Invalid item type: {item_type}"
     if item_type.lower() == "table" and not item:
         raise ValueError("If item_type is table, must supply an item (a table name) to process")
 
-    # connect to the AS instance from Python
     AMOServer = AMO.Server()
     logger.info("Connecting to database...")
     AMOServer.Connect(connection_string)
 
-    # Dict of refresh types
     refresh_dict = {"full": AMO.RefreshType.Full}
 
-    # process
     db = AMOServer.Databases[db_name]
 
     if item_type.lower() == "table":
@@ -271,5 +172,4 @@ def process_model(connection_string, db_name, refresh_type="full", item_type="mo
         logger.info("No objects affected by the refresh")
 
     logger.info("Disconnecting from Database...")
-    # Disconnect
     AMOServer.Disconnect()
