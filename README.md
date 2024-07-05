@@ -75,28 +75,50 @@ python download.py
 Logs are saved in the logs directory with a timestamp. Both file and console logging are set up to capture the script's execution details.
 
 
-## Example Workflow
+### Step-by-Step Instructions
 
-Here’s an example workflow of how to use the package:
+1. **Install the Package**:
+  
+  Use Poetry to add the package to your project.
 
-1. Install the package using Poetry or pip.
-2. Copy and configure the .env and config.json files.
-3. Run the download.py script to fetch and save Power BI tables.
+  poetry add download_pbi_xmla
 
-## Script Overview
+2. **Run the Setup Script**: This script will copy example configuration files and prompt you to edit them.
+  
+  python setup_files.py
 
-- download_pbi_xmla/main.py: Contains the main functionality to fetch and save tables.
-- download.py: Script to execute the main functionality defined in main.py.
+3. **Edit Configuration Files**: Update the copied .env and config.json files with your details.
 
-## Command Syntax
+#### .env File Example
 
-The script fetches configuration from environment variables and the config file. 
-There is no need to provide command-line arguments, making the usage straightforward.
+Ensure the .env file is placed in the project directory and contains the following variables:
 
-### Example Command
+CLIENT_ID=your-client-id
+CLIENT_SECRET=your-client-secret
+TENANT_ID=your-tenant-id
+CONFIG_FILE=config.json
+SAVE_PATH=./data
+USE_MFA=true
 
-Simply run:
-python download.py
+#### config.json File Example
+
+{
+  "server": "your-server-url",
+  "database": "your-database-name",
+  "tables": [
+    {
+      "name": "your-table-name",
+      "refresh_type": "full",
+      "date_column": "your-date-column",
+      "last_date": "YYYY-MM-DD"
+    }
+  ]
+}
+
+4. **Run the Download Script**: This script will load the environment variables and run the download process.
+
+python run_download.py
+
 
 ## Contribution
 
