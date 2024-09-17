@@ -1,37 +1,69 @@
-# download_pbi_xmla/main.py
+#main.py
+
 import pyarrow.parquet as pq
-import pyarrow.compute as pc
+import pyarrow.csv as pcsv
+import pandas as pd
+import pyarrow as pa
 import msal
 import os
 import logging
 import json
-from datetime import datetime
+from pathlib import Path  # Import Path for directory handling
 from download_pbi_xmla.ssas_api import set_conn_string, get_DAX
 
 logging.basicConfig(level=logging.DEBUG)
 
-def fetch_and_save_table(table_name, conn_str, file_name, date_column=None, last_date=None):
-    query = f'EVALUATE {table_name}'
-    if date_column and last_date:
-        query += f' WHERE {date_column} > DATE({last_date.year}, {last_date.month}, {last_date.day})'
-    
+def save_data(table, file_name, file_format):
+    """
+    Save the data in the specified format.
+    """
     try:
-        logging.info(f"Running DAX query for table {table_name}")
-        table = get_DAX(conn_str, query)
-        logging.info(f"Table '{table_name}' fetched successfully!")
-        pq.write_table(table, file_name)
-        logging.info(f"Table '{table_name}' saved to {file_name}")
-        
-        if date_column:
-            # Get the latest date from the fetched data
-            date_column_data = table.column(date_column)
-            date_column_data = pc.cast(date_column_data, pa.timestamp('s'))
-            latest_date = date_column_data.max().as_py()
-            return latest_date
+        # Ensure the table is of the expected type
+        if not isinstance(table, pa.Table):
+            raise ValueError(f"Unexpected data type: {type(table)}. Expected pyarrow.Table.")
+
+        if file_format == 'parquet':
+            pq.write_table(table, file_name + '.parquet', compression='snappy')  # Use compression to save space
+            logging.info(f"Data saved as {file_name}.parquet")
+        elif file_format == 'csv':
+            # Convert Arrow table to pandas DataFrame for CSV output
+            df = table.to_pandas()
+            # Write to CSV in chunks
+            chunk_size = 100000  # Adjust the chunk size based on your system's memory capacity
+            for start in range(0, len(df), chunk_size):
+                df_chunk = df[start:start + chunk_size]
+                mode = 'w' if start == 0 else 'a'  # Write the first chunk with 'w', append subsequent chunks
+                header = start == 0  # Include header only in the first chunk
+                df_chunk.to_csv(file_name + '.csv', index=False, mode=mode, header=header)
+            logging.info(f"Data saved as {file_name}.csv in chunks.")
+        else:
+            raise ValueError(f"Unsupported file format: {file_format}")
     except Exception as e:
-        logging.error(f"Failed to fetch or save table '{table_name}'.")
+        logging.error(f"Failed to save data in format {file_format}.")
         logging.error(str(e))
-    return None
+
+
+def fetch_and_save_query(query, conn_str, file_name, file_format='parquet'):
+    try:
+        logging.info(f"Running DAX query: {query}")
+        table = get_DAX(conn_str, query)
+
+        # Add a debug statement to check the type of 'table'
+        logging.debug(f"Type of query result: {type(table)}")
+
+        # Check if the returned table is None or of an unexpected type
+        if table is None:
+            logging.error("The query returned no data.")
+            return
+        elif not isinstance(table, pa.Table):
+            logging.error(f"Unexpected data type: {type(table)}. Expected a pyarrow.Table.")
+            return
+
+        logging.info(f"DAX query executed successfully!")
+        save_data(table, file_name, file_format)
+    except Exception as e:
+        logging.error(f"Failed to execute or save query: {query}.")
+        logging.error(str(e))
 
 def get_access_token(client_id, client_secret, tenant_id):
     authority_url = f"https://login.microsoftonline.com/{tenant_id}"
@@ -49,7 +81,10 @@ def get_access_token(client_id, client_secret, tenant_id):
         logging.error("Failed to acquire token")
         raise ValueError("Failed to acquire token")
 
-def fetch_tables(config_file, path, client_id, client_secret, tenant_id):
+def fetch_dax_queries(config_file, path, client_id, client_secret, tenant_id):
+    # Ensure the save path exists
+    Path(path).mkdir(parents=True, exist_ok=True)
+
     with open(config_file, 'r') as file:
         config = json.load(file)
 
@@ -58,34 +93,14 @@ def fetch_tables(config_file, path, client_id, client_secret, tenant_id):
 
     logging.debug(f"Connection string: {conn_str}")
 
-    updated_tables = []
-    for table_info in config['tables']:
-        table_name = table_info['name']
-        refresh_type = table_info['refresh_type']
-        date_column = table_info.get('date_column')
-        last_date = table_info.get('last_date')  # Expected to be in "YYYY-MM-DD" format
-
-        if last_date:
-            last_date = datetime.strptime(last_date, "%Y-%m-%d")
-
-        file_path = os.path.join(path, f"{table_name}.parquet")
-        
-        if refresh_type == "incremental" and date_column:
-            latest_date = fetch_and_save_table(table_name, conn_str, file_path, date_column, last_date)
-            if latest_date:
-                table_info['last_date'] = latest_date.strftime("%Y-%m-%d")
-        else:
-            fetch_and_save_table(table_name, conn_str, file_path)
-
-        updated_tables.append(table_info)
-    
-    # Update the configuration file with the latest dates
-    config['tables'] = updated_tables
-    with open(config_file, 'w') as file:
-        json.dump(config, file, indent=4)
+    # Process DAX queries
+    for query_info in config.get('dax_queries', []):
+        dax_query = query_info['query']
+        output_file = query_info['output_file']
+        file_format = query_info.get('format', 'parquet')  # Default to 'parquet' if not specified
+        fetch_and_save_query(dax_query, conn_str, os.path.join(path, output_file), file_format)
 
 def main():
-    import argparse
     from dotenv import load_dotenv
 
     # Load environment variables from .env file
@@ -110,14 +125,16 @@ def main():
     logging.debug(f"Config File: {CONFIG_FILE}")
     logging.debug(f"Save Path: {SAVE_PATH}")
 
-    fetch_tables(
-        config_file=CONFIG_FILE,
-        path=SAVE_PATH,
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        tenant_id=TENANT_ID
-    )
+    try:
+        fetch_dax_queries(
+            config_file=CONFIG_FILE,
+            path=SAVE_PATH,
+            client_id=CLIENT_ID,
+            client_secret=CLIENT_SECRET,
+            tenant_id=TENANT_ID
+        )
+    except Exception as e:
+        logging.error(f"Failed to run the main function: {str(e)}")
 
 if __name__ == "__main__":
     main()
-

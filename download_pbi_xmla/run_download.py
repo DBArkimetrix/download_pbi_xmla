@@ -1,10 +1,15 @@
+#run_download.py
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 from download_pbi_xmla.main import main as download_main
 
 def main():
-    # Load .env file
-    load_dotenv()
+    # Get the current working directory
+    current_dir = Path.cwd()
+
+    # Explicitly load the .env file from the current working directory
+    load_dotenv(dotenv_path=current_dir / '.env')
 
     # Verify environment variables
     required_vars = ['CLIENT_ID', 'CLIENT_SECRET', 'TENANT_ID', 'CONFIG_FILE', 'SAVE_PATH']

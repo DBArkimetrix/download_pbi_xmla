@@ -1,12 +1,16 @@
 {
   "server": "your-server-url",
   "database": "your-database-name",
-  "tables": [
+  "dax_queries": [
     {
-      "name": "your-table-name",
-      "refresh_type": "full",
-      "date_column": "your-date-column",
-      "last_date": "YYYY-MM-DD"
+      "query": "Add your DAX query here",
+      "output_file": "Your filename here.parquet",
+      "format": "parquet"
+    },
+    {
+      "query": "Add your second DAX query here (or delete section)",
+      "output_file": "Your second filename here.parquet",
+      "format": "csv"
     }
   ]
 }

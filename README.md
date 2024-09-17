@@ -1,91 +1,181 @@
-# Power BI XMLA Endpoint Download to Parquet
+Here's a revised version of your `README.md` with improved clarity, formatting, and additional instructions to guide beginner Python users:
 
-This package allows you to fetch and save Power BI tables in Parquet format via the XMLA endpoint.
+```markdown
+# download_pbi_xmla
+
+**Version:** 0.4  
+**Description:** A Python package to fetch and save Power BI tables via the XMLA endpoint using DAX queries. The package allows data to be saved in either Parquet or CSV format.  
+
+## Table of Contents
+1. [Overview](#overview)
+2. [System Requirements](#system-requirements)
+3. [Installation](#installation)
+4. [Setup](#setup)
+5. [Usage](#usage)
+6. [Running the Scripts](#running-the-scripts)
+7. [Troubleshooting](#troubleshooting)
+8. [Contributing](#contributing)
+9. [License](#license)
+
+## Overview
+The `download_pbi_xmla` package is designed to connect to a Power BI XMLA endpoint, execute DAX queries, and save the results in either Parquet or CSV formats. This tool is specifically for use in a Windows environment due to its dependency on `.NET` assemblies and the `pythonnet` library.
 
 ## System Requirements
-
-This package requires a Windows environment with .NET assemblies, as it relies on `pythonnet` to interact with .NET libraries.
-
-## Authentication
-
-The package currently only supports authentication using the Microsoft Authentication Library (MSAL) to obtain an access token, supporting Multi-Factor Authentication (MFA).
-
-
-## Python Version Requirement
-
-This package requires Python version >=3.9,<3.13.
+- **Operating System:** Windows
+- **Python Version:** 3.9 to 3.12
+- **Required Software:** .NET Framework and Power BI Pro or Premium capacity access with XMLA endpoint enabled.
+- **Authentication:** The package currently only supports authentication using the Microsoft Authentication Library (MSAL) to obtain an access token, supporting Multi-Factor Authentication (MFA).
 
 ## Installation
 
-### Using Poetry
+### Prerequisites
+1. **Install Python**  
+   Ensure you have Python 3.9 to 3.12 installed. You can download it from [python.org](https://www.python.org/downloads/).
 
-To install the package using Poetry, run:
+2. **Install .NET Framework**  
+   Install the required .NET Framework runtime from [Microsoft's website](https://dotnet.microsoft.com/download).
 
+3. **Install Poetry** (optional)  
+   [Poetry](https://python-poetry.org/docs/#installation) is a dependency manager for Python that simplifies package installation and management. Follow the instructions on their website to install it.
+
+### Steps to Install the Package
+
+#### Option 1: Using Poetry
+
+If you have Poetry installed, you can add the package to your environment by running:
+
+```bash
 poetry add download_pbi_xmla
+```
 
-### Using pip
+#### Option 2: Using pip
 
-To install the package using pip, run:
+Alternatively, you can install the package directly using pip:
 
+```bash
 pip install download_pbi_xmla
+```
 
 ## Setup
 
-You can create the required .env and config.json files using the templates below, or you can run the scripts below to create the templates.
+1. **Run the Setup Script**  
+   This script copies example configuration files and prompts you to edit them.
 
-1. **Run the Setup Script**: This script will copy example configuration files and prompt you to edit them.
+   - **Using Poetry:**
+     ```bash
+     poetry run setup-files
+     ```
 
-### Using Poetry
+   - **Using pip:**
+     ```bash
+     python -m download_pbi_xmla.setup_files
+     ```
 
-poetry run setup-files 
+2. **Edit the Configuration Files**  
+   After running the setup script, two configuration files (`.env` and `config.json`) will be created in your project's root directory. You need to update these files with your credentials and specific configurations.
 
-### Using pip
-
-python -m download_pbi_xmla.setup_files
-
-
-2. **Edit the .env and config.json files** with your credentials and configuration.
-
-### .env File Example
-
-CLIENT_ID=your-client-id
-CLIENT_SECRET=your-client-secret
-TENANT_ID=your-tenant-id
-CONFIG_FILE=config.json
-SAVE_PATH=./data
-
-### config.json File Example
-
-{
-  "server": "your-server-url",
-  "database": "your-database-name",
-  "tables": [
+   - **.env File Example:**  
+     Open the newly created `.env` file and provide your credentials and other necessary settings:
+    ```plaintext
+    CLIENT_ID=your-client-id
+    CLIENT_SECRET=your-client-secret
+    TENANT_ID=your-tenant-id
+    CONFIG_FILE=config.json
+    SAVE_PATH=./data
+    ```
+   - **config.json File Example:**  
+     Modify the `config.json` file to specify the Power BI server, database, DAX queries, and output formats:
+    ```json
     {
-      "name": "your-table-name",
-      "refresh_type": "full",
-      "date_column": "your-date-column",
-      "last_date": "YYYY-MM-DD"
+      "server": "your-server-url",
+      "database": "your-database-name",
+      "dax_queries": [
+        {
+          "query": "Add your DAX query here",
+          "output_file": "Your filename here.parquet",
+          "format": "parquet"
+        },
+        {
+          "query": "Add your second DAX query here (or delete this section)",
+          "output_file": "Your second filename here.csv",
+          "format": "csv"
+        }
+      ]
     }
-  ]
-}
+    ```
 
 ## Usage
 
-After setting up the environment and configuration files, you can use the download.py script to fetch and save Power BI tables in Parquet format.
+To use the package, you can execute the provided scripts to fetch data from Power BI XMLA endpoints and save it in your desired format.
 
-3. **Run the Download Script**: This script will load the environment variables and run the download process.
+### Fetch and Save Data
+You can run the main download script using either Poetry or pip:
 
-### Using poetry
+- **Using Poetry:**
+  ```bash
+  poetry run run-download
+  ```
 
-poetry run run-download
+- **Using pip:**
+  ```bash
+  python -m download_pbi_xmla.run_download
+  ```
 
-### Using pip
+## Running the Scripts
 
-python -m download_pbi_xmla.run_download
+### 1. Fetch Tables Script
+This script downloads tables and saves them using the specified configurations:
 
+- **Using Poetry:**
+  ```bash
+  poetry run fetch-tables
+  ```
 
-## Contribution
+- **Using pip:**
+  ```bash
+  python -m download_pbi_xmla.fetch_tables
+  ```
 
-Feel free to fork the repository and create pull requests. Contributions are welcome!
+### 2. Setup Environment Script
+To set up your environment by creating necessary configuration files:
 
-For any issues or feature requests, please open an issue on the repository.
+- **Using Poetry:**
+  ```bash
+  poetry run setup-environment
+  ```
+
+- **Using pip:**
+  ```bash
+  python -m download_pbi_xmla.setup_environment
+  ```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **.NET Assemblies Not Found**
+   Ensure you have the correct version of the .NET runtime installed on your machine. The `pythonnet` library only works on Windows systems.
+
+2. **Invalid Credentials**
+   Double-check that your credentials in the `.env` file are correct and that your Azure AD app registration has the necessary permissions to access the Power BI XMLA endpoint.
+
+3. **Data Save Errors**
+   Ensure that the specified output paths and formats are correct. The script supports saving data as either Parquet or CSV files.
+
+## Contributing
+
+If you'd like to contribute to this project, please fork the repository and create a pull request with your changes. Ensure that all tests pass before submitting.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+```
+
+### Key Improvements and Additions:
+
+1. **Clearer Sections:** Reorganized some sections for better flow and clarity.
+2. **Expanded Steps:** Provided detailed instructions for beginners, including the installation and running of the setup script using both Poetry and pip.
+3. **Improved Formatting:** Added headings and code blocks for easy reading and copying.
+4. **Additional Instructions:** Explained why and when to use Poetry or pip, making the guide more beginner-friendly. 
+
+Feel free to further customize it based on your preferences or any additional specific details!

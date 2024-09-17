@@ -1,3 +1,4 @@
+#ssas_api.py
 import pyarrow as pa
 import pyarrow.parquet as pq
 import numpy as np
@@ -97,7 +98,12 @@ def _get_DAX(connection_string, dax_string) -> "DataTable":
     table = DataTable()
     logger.info("Getting DAX query...")
     dataadapter.Fill(table)
-    logger.info("DAX query successfully retrieved")
+    logger.info(f"DAX query successfully retrieved with {table.Rows.Count} rows.")
+    
+    # Log the number of columns and their types
+    for col in table.Columns.List:
+        logger.debug(f"Column: {col.ColumnName}, DataType: {col.DataType.FullName}")
+
     return table
 
 def _parse_DAX_result(table: "DataTable") -> pa.Table:
@@ -113,15 +119,35 @@ def _parse_DAX_result(table: "DataTable") -> pa.Table:
         data_type = col.DataType.FullName
         data = [row[i] if not isinstance(row[i], System.DBNull) else None for row in rows]
 
-        if data_type == "System.DateTime":
-            data = [datetime.strptime(x.ToString('s'), "%Y-%m-%dT%H:%M:%S") if x is not None else None for x in data]
-            arrays.append(pa.array(data, type=pa.timestamp('s')))
-        elif data_type == "System.Int64":
-            arrays.append(pa.array(data, type=pa.int64()))
-        elif data_type == "System.Double":
-            arrays.append(pa.array(data, type=pa.float64()))
-        else:
-            arrays.append(pa.array(data, type=pa.string()))
+        logger.debug(f"Processing column '{column_name}' with data type '{data_type}'")
+
+        try:
+            if data_type == "System.DateTime":
+                # Convert to datetime
+                data = [datetime.strptime(x.ToString('s'), "%Y-%m-%dT%H:%M:%S") if x is not None else None for x in data]
+                arrays.append(pa.array(data, type=pa.timestamp('s')))
+            elif data_type == "System.Int64":
+                # Convert to int64
+                arrays.append(pa.array(data, type=pa.int64()))
+            elif data_type == "System.Double":
+                # Convert to float64
+                arrays.append(pa.array(data, type=pa.float64()))
+            elif data_type == "System.Boolean":
+                # Convert boolean to string ("True" or "False") or directly to pyarrow boolean type
+                bool_data = [bool(x) if x is not None else None for x in data]
+                arrays.append(pa.array(bool_data, type=pa.bool_()))
+            else:
+                # Convert to string
+                str_data = [str(x) if x is not None else None for x in data]
+                arrays.append(pa.array(str_data, type=pa.string()))
+        except Exception as e:
+            logger.error(f"Failed to convert column '{column_name}' to {data_type}: {str(e)}")
+            raise
+
+    # Check for empty arrays
+    if not arrays:
+        logger.error("No data was parsed from the DataTable.")
+        raise ValueError("No data was parsed from the DataTable.")
 
     schema = pa.schema([(col.ColumnName, arrays[i].type) for i, col in enumerate(cols)])
     arrow_table = pa.Table.from_arrays(arrays, schema=schema)
