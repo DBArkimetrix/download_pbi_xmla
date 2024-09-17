@@ -1,6 +1,3 @@
-Here's a revised version of your `README.md` with improved clarity, formatting, and additional instructions to guide beginner Python users:
-
-```markdown
 # download_pbi_xmla
 
 **Version:** 0.4  
@@ -169,13 +166,3 @@ If you'd like to contribute to this project, please fork the repository and crea
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
-```
-
-### Key Improvements and Additions:
-
-1. **Clearer Sections:** Reorganized some sections for better flow and clarity.
-2. **Expanded Steps:** Provided detailed instructions for beginners, including the installation and running of the setup script using both Poetry and pip.
-3. **Improved Formatting:** Added headings and code blocks for easy reading and copying.
-4. **Additional Instructions:** Explained why and when to use Poetry or pip, making the guide more beginner-friendly. 
-
-Feel free to further customize it based on your preferences or any additional specific details!
