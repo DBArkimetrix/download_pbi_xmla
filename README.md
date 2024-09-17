@@ -23,6 +23,24 @@ The `download_pbi_xmla` package is designed to connect to a Power BI XMLA endpoi
 - **Required Software:** .NET Framework and Power BI Pro or Premium capacity access with XMLA endpoint enabled.
 - **Authentication:** The package currently only supports authentication using the Microsoft Authentication Library (MSAL) to obtain an access token, supporting Multi-Factor Authentication (MFA).
 
+### Python Version Compatibility
+
+The `download_pbi_xmla` package requires Python version **3.9, 3.10, 3.11, or 3.12**. 
+
+#### Important Note:
+
+- The package is **not compatible** with Python 3.13 or any versions above it due to a dependency on `pythonnet`, which only supports Python versions up to 3.12.
+- If you are using Python 3.13 or higher, please switch to a compatible Python version (3.9 to 3.12) to install and use this package.
+
+#### Instructions for Checking and Changing Your Python Version
+
+1. **Check Your Python Version:**
+   
+   Run the following command in your terminal or command prompt to check your current Python version:
+
+   ```sh
+   python --version
+   ```
 ## Installation
 
 ### Prerequisites
